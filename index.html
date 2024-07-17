@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script>
+    function readText(text) {
+      var speech = new SpeechSynthesisUtterance();
+
+      var voices = window.speechSynthesis.getVoices();
+      var britishVoice = voices.find(function(voice) {
+        return voice.name === 'English (Great Britain)+Nguyen'
+      });
+      console.debug("Using voice named ", britishVoice.name);
+
+      speech.voice = britishVoice;
+      speech.text = text;
+      speech.volume = 1;
+      speech.rate = 1;
+      speech.pitch = 1;
+
+      window.speechSynthesis.speak(speech);
+    }
+
+    function fetchArticleSummary(pageId) {
+      var url = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&pageids=${pageId}&format=json&origin=*`;
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          var title = data.query.pages[pageId].title;
+          var summary = data.query.pages[pageId].extract;
+
+          var titleElement = document.createElement('h1');
+          titleElement.textContent = title;
+
+          var summaryElement = document.createElement('p');
+          summaryElement.textContent = summary;
+
+          document.body.appendChild(titleElement);
+          document.body.appendChild(summaryElement);
+
+          readText(summary);
+        })
+        .catch(error => console.log(error));
+    }
+
+    function fetchNearbyArticle(latitude, longitude) {
+      var url = `https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${latitude}|${longitude}&gsradius=10000&gslimit=1&format=json&origin=*`;
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          var pageId = data.query.geosearch[0].pageid;
+          fetchArticleSummary(pageId);
+        })
+        .catch(error => console.log(error));
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('getLocationButton').addEventListener('click', function() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            fetchNearbyArticle(latitude, longitude); // Call function to fetch nearby article
+          });
+        } else {
+          console.log("Geolocation is not supported by this browser.");
+        }
+      });
+    });
+  </script>
+</head>
+<body>
+  <button id="getLocationButton">Get nearby Wikipedia article</button>
+</body>
+</html>
